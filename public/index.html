@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AJ's Roadside Assistance — Book Help Now</title>
+<meta name="description" content="Fast roadside assistance: lockouts, jump starts, fuel, air and fluid delivery. See your price and book online in minutes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ffb800'/%3E%3Cpath d='M18 4 8 18h7l-1 10 10-14h-7z' fill='%2315171a'/%3E%3C/svg%3E">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="AJ's Roadside Assistance home"><img class="logo" src="/logo.png" alt="AJ's"><span class="brand-text">Roadside<br>Assistance</span></a>
+    <a class="call" id="call-link" href="tel:"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg><span data-biz="phone"></span></a>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap hero-grid"><div>
+    <h1>Stuck? <em>Help is on the way.</em></h1>
+    <p data-biz="tagline">Fast, friendly roadside help — day or night.</p>
+    <div class="hero-badges">
+      <span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>Upfront pricing</span>
+      <span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>ASAP or scheduled</span>
+      <span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>Secure card payment</span>
+    </div>
+  </div><img class="hero-logo" src="/logo.png" alt="" aria-hidden="true"></div>
+</section>
+
+<main id="booking-view" class="wrap booking">
+  <form id="book-form" novalidate>
+    <!-- 1 service -->
+    <section class="step">
+      <div class="step-head"><span class="step-num">1</span><h2>What do you need?</h2></div>
+      <div class="services" id="services"></div>
+      <div class="svc-extra hidden" id="extra-fuel">
+        <div class="grid">
+          <label class="f"><span>Fuel type</span><select id="fuelType"></select></label>
+          <label class="f"><span>Gallons</span><select id="gallons"></select></label>
+        </div>
+      </div>
+      <div class="svc-extra hidden" id="extra-fluid">
+        <label class="f"><span>Which fluid?</span><select id="fluidType"></select></label>
+      </div>
+    </section>
+
+    <!-- 2 timing -->
+    <section class="step">
+      <div class="step-head"><span class="step-num">2</span><h2>When?</h2></div>
+      <div class="seg" id="timing">
+        <button type="button" data-timing="asap" aria-pressed="true"><b>🚨 ASAP</b><span id="asap-sub">Dispatch now</span></button>
+        <button type="button" data-timing="scheduled" aria-pressed="false"><b>📅 Schedule</b><span>Pick a date &amp; time</span></button>
+      </div>
+      <div id="sched-wrap" class="hidden" style="margin-top:14px">
+        <label class="f"><span>Date &amp; time <i>*</i></span><input type="datetime-local" id="scheduledAt"></label>
+        <div class="hint" id="hours-hint"></div>
+      </div>
+    </section>
+
+    <!-- 3 location -->
+    <section class="step">
+      <div class="step-head"><span class="step-num">3</span><h2>Where are you?</h2></div>
+      <label class="f"><span>Address, intersection or highway mile marker <i>*</i></span>
+        <div class="loc-row">
+          <input type="text" id="address" placeholder="e.g. 123 Main St, Westland, MI" autocomplete="street-address">
+          <button type="button" class="btn btn-ghost" id="geo-btn" title="Use my current location"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg><span class="geo-label">Use my location</span></button>
+        </div>
+      </label>
+      <div class="loc-found" id="loc-found"></div>
+      <label class="f" style="margin-top:14px"><span>Landmark or extra details</span><input type="text" id="locDetails" placeholder="e.g. Kroger parking lot, near the gas station, northbound shoulder"></label>
+    </section>
+
+    <!-- 4 vehicle -->
+    <section class="step">
+      <div class="step-head"><span class="step-num">4</span><h2>Your vehicle</h2></div>
+      <div class="grid three">
+        <label class="f"><span>Year <i>*</i></span><select id="vYear"></select></label>
+        <label class="f"><span>Make <i>*</i></span><input type="text" id="vMake" list="makes" placeholder="Ford" autocomplete="off"></label>
+        <label class="f half-m"><span>Model <i>*</i></span><input type="text" id="vModel" placeholder="F-150" autocomplete="off"></label>
+        <div class="full"><label class="f"><span>Color <i>*</i></span></label><div class="colors" id="colors"></div>
+          <input type="text" id="vColorOther" class="hidden" placeholder="Enter color" style="margin-top:10px"></div>
+        <label class="f"><span>License plate</span><input type="text" id="vPlate" placeholder="Optional" autocomplete="off" style="text-transform:uppercase"></label>
+      </div>
+      <datalist id="makes"></datalist>
+    </section>
+
+    <!-- 5 contact -->
+    <section class="step">
+      <div class="step-head"><span class="step-num">5</span><h2>Your contact info</h2></div>
+      <div class="grid">
+        <label class="f full"><span>Full name <i>*</i></span><input type="text" id="cName" autocomplete="name"></label>
+        <label class="f half-m"><span>Mobile phone <i>*</i></span><input type="tel" id="cPhone" autocomplete="tel" placeholder="(555) 555-5555"></label>
+        <label class="f half-m"><span>Email (for receipt)</span><input type="email" id="cEmail" autocomplete="email"></label>
+        <label class="f full"><span>Anything else we should know?</span><textarea id="notes" placeholder="e.g. keys are locked in the trunk, battery is under the back seat, car is in a parking garage level 3"></textarea></label>
+      </div>
+    </section>
+
+    <!-- 6 payment -->
+    <section class="step" id="pay-step">
+      <div class="step-head"><span class="step-num">6</span><h2>Payment</h2></div>
+      <div id="pay-ready" class="hidden">
+        <div id="card-container"></div>
+        <div class="hint">Your card is processed securely by Square. We never see or store your full card number.</div>
+      </div>
+      <div id="pay-off" class="notice warn hidden">Online card payment isn’t set up yet — your request will still be sent and we’ll collect payment on arrival.</div>
+    </section>
+
+    <div id="form-error" class="notice err" role="alert"></div>
+    <button type="submit" class="btn btn-amber btn-block" id="book-btn">Book now</button>
+    <p class="hint" style="text-align:center">By booking you agree to be contacted by phone or text about this service.</p>
+  </form>
+
+  <aside class="summary" id="summary">
+    <div class="summary-card">
+      <h3>Price breakdown</h3>
+      <div class="meta" id="sum-meta">Choose a service to see your price.</div>
+      <ul class="lines" id="sum-lines"></ul>
+      <div class="total"><span>Total</span><b id="sum-total">$0.00</b></div>
+      <div class="secure"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>No hidden fees. You’ll see the final price before you pay.</div>
+    </div>
+  </aside>
+</main>
+
+<div class="mbar" id="mbar">
+  <div><small>Total</small><b id="mbar-total">$0.00</b></div>
+  <button type="button" class="btn btn-amber" id="mbar-btn">See breakdown</button>
+</div>
+
+<section id="done-view" class="done hidden">
+  <div class="tick"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></div>
+  <h2>You’re booked!</h2>
+  <div class="ref" id="done-ref"></div>
+  <p id="done-msg"></p>
+  <p id="done-pay" class="hint"></p>
+  <p><a class="btn btn-dark" id="done-call" href="tel:">Call us</a></p>
+</section>
+
+<footer><span data-biz="name"></span> · <a href="/admin">Owner login</a></footer>
+
+<script src="/book.js"></script>
+</body>
+</html>

@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Owner Dashboard — AJ&#39;s Roadside Assistance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<style>
+  .admin { padding: 24px 16px 80px; }
+  .tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 20px; padding-bottom: 4px; }
+  .tabs button { border: 0; background: transparent; padding: 10px 14px; border-radius: 10px; font-weight: 600; color: var(--muted); cursor: pointer; white-space: nowrap; }
+  .tabs button[aria-selected="true"] { background: var(--asphalt); color: #fff; }
+  .panel { display: none; } .panel.on { display: block; }
+  .status-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .pill { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: .9rem; cursor: pointer; text-align: left; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .dot.ok { background: var(--green); } .dot.no { background: var(--red); }
+  .svc-row { display: grid; grid-template-columns: auto 1.2fr 2fr 110px; gap: 12px; align-items: end; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .svc-row:last-child { border-bottom: 0; }
+  .svc-row .fuel-extra { grid-column: 2 / -1; display: grid; grid-template-columns: 160px 160px; gap: 12px; }
+  @media (max-width: 720px) { .svc-row { grid-template-columns: auto 1fr 110px; } .svc-row .desc { grid-column: 2 / -1; order: 5; } .svc-row .fuel-extra { grid-template-columns: 1fr 1fr; order: 6; } }
+  .switch { position: relative; width: 46px; height: 26px; display: inline-block; margin-bottom: 10px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch span { position: absolute; inset: 0; background: #ccc; border-radius: 999px; transition: .2s; cursor: pointer; }
+  .switch span::before { content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+  .switch input:checked + span { background: var(--green); }
+  .switch input:checked + span::before { transform: translateX(20px); }
+  .money { position: relative; } .money::before { content: "$"; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+  .money input { padding-left: 24px; }
+  .save-bar { position: sticky; bottom: 0; background: var(--paper); padding: 14px 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--asphalt); color: #fff; padding: 12px 18px; border-radius: 10px; z-index: 50; box-shadow: var(--shadow); max-width: calc(100% - 32px); }
+  .bk { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .bk-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: start; }
+  .bk h3 { margin: 0; font-size: 1.1rem; }
+  .bk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px 20px; margin: 12px 0; font-size: .92rem; }
+  .bk-grid div b { color: var(--muted); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .03em; display: block; }
+  .tag { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: .78rem; font-weight: 700; }
+  .tag.asap { background: #fdecea; color: #8a1f14; } .tag.sched { background: #e8f0fd; color: #1e4fa3; }
+  .tag.new { background: var(--amber-soft); color: #6b4e00; } .tag.dispatched { background: #e8f0fd; color: #1e4fa3; } .tag.completed { background: #eef7f1; color: #155d34; } .tag.cancelled { background: #eee; color: #555; }
+  .bk-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .bk-actions .btn { min-height: 38px; padding: 8px 12px; font-size: .88rem; }
+  .steps-help { font-size: .9rem; color: var(--muted); padding-left: 18px; } .steps-help li { margin-bottom: 6px; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .filters button { border: 1.5px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 14px; cursor: pointer; font-weight: 600; font-size: .88rem; }
+  .filters button[aria-pressed="true"] { background: var(--asphalt); color: #fff; border-color: var(--asphalt); }
+  .login { max-width: 380px; margin: 60px auto; padding: 0 16px; }
+</style>
+</head>
+<body>
+<header class="topbar"><div class="wrap">
+  <a class="brand" href="/"><img class="logo" src="/logo.png" alt="AJ's"><span>Owner Dashboard</span></a>
+  <div style="display:flex;gap:8px"><a class="call" href="/" target="_blank">View site</a><button class="call hidden" id="logout">Log out</button></div>
+</div></header>
+
+<section class="login hidden" id="login">
+  <div class="step">
+    <h2 style="margin-top:0">Owner login</h2>
+    <form id="login-form"><label class="f"><span>Password</span><input type="password" id="pw" autocomplete="current-password" autofocus></label>
+      <div id="login-err" class="notice err hidden" style="margin-top:12px"></div>
+      <button class="btn btn-dark btn-block" style="margin-top:14px">Log in</button></form>
+  </div>
+</section>
+
+<main class="wrap admin hidden" id="app">
+  <div class="notice err hidden" id="pw-warn" style="margin-bottom:14px">⚠️ You’re using the default password. Set the <b>ADMIN_PASSWORD</b> environment variable on your server before going live.</div>
+  <div class="status-row" id="status"></div>
+  <nav class="tabs" role="tablist">
+    <button data-tab="bookings" aria-selected="true">Bookings</button>
+    <button data-tab="rates">Service rates</button>
+    <button data-tab="mileage">Mileage &amp; fees</button>
+    <button data-tab="square">Square payments</button>
+    <button data-tab="email">Email alerts</button>
+    <button data-tab="business">Business info</button>
+  </nav>
+
+  <!-- bookings -->
+  <section class="panel on" data-panel="bookings">
+    <div class="filters" id="filters">
+      <button data-f="open" aria-pressed="true">Open</button><button data-f="all" aria-pressed="false">All</button><button data-f="completed" aria-pressed="false">Completed</button><button data-f="cancelled" aria-pressed="false">Cancelled</button>
+      <button class="btn btn-ghost" id="refresh" style="margin-left:auto;min-height:34px;padding:6px 12px">↻ Refresh</button>
+    </div>
+    <div id="bookings"></div>
+  </section>
+
+  <!-- rates -->
+  <section class="panel" data-panel="rates">
+    <div class="step"><div class="step-head"><h2>Service rates</h2></div>
+      <p class="hint" style="margin-top:-8px">The base price for each service. Turn a service off to hide it from customers.</p>
+      <div id="svc-list"></div></div>
+  </section>
+
+  <!-- mileage -->
+  <section class="panel" data-panel="mileage">
+    <div class="step"><div class="step-head"><h2>Mileage rates</h2></div>
+      <div class="grid">
+        <label class="f"><span>Price per mile</span><div class="money"><input type="number" step="0.01" min="0" id="m-perMile"></div></label>
+        <label class="f"><span>Free miles included</span><input type="number" step="0.5" min="0" id="m-freeMiles"><div class="hint">Miles included in the base price before per-mile charges start.</div></label>
+        <label class="f"><span>Max service distance (miles)</span><input type="number" step="1" min="0" id="m-maxMiles"><div class="hint">Bookings farther than this are turned away. 0 = no limit.</div></label>
+        <label class="f"><span>Charge round trip?</span><label class="switch"><input type="checkbox" id="m-roundTrip"><span></span></label><div class="hint">On = mileage is charged both ways (free miles also double).</div></label>
+      </div>
+      <div class="notice warn hidden" id="no-base" style="margin-top:14px">Set your base address under <b>Business info</b> so mileage can be calculated.</div>
+      <div class="notice ok" id="m-example" style="margin-top:14px"></div>
+    </div>
+    <div class="step"><div class="step-head"><h2>Extra fees &amp; tax</h2></div>
+      <div class="grid">
+        <label class="f"><span>ASAP priority fee</span><div class="money"><input type="number" step="0.01" min="0" id="f-asapFee"></div><div class="hint">0 = no extra charge for ASAP.</div></label>
+        <label class="f"><span>After-hours fee</span><div class="money"><input type="number" step="0.01" min="0" id="f-afterHoursFee"></div></label>
+        <label class="f"><span>Business hours start</span><input type="time" id="f-businessStart"></label>
+        <label class="f"><span>Business hours end</span><input type="time" id="f-businessEnd"></label>
+        <label class="f"><span>Sales tax %</span><input type="number" step="0.01" min="0" id="f-taxPercent"><div class="hint">Check with your accountant whether your services are taxable.</div></label>
+      </div>
+    </div>
+  </section>
+
+  <!-- square -->
+  <section class="panel" data-panel="square">
+    <div class="step"><div class="step-head"><h2>Link your Square account</h2></div>
+      <ol class="steps-help">
+        <li>Go to <a href="https://developer.squareup.com/apps" target="_blank" rel="noopener">developer.squareup.com/apps</a> and sign in with your Square account.</li>
+        <li>Click <b>+ Create an application</b> (any name, e.g. “Booking website”) and open it.</li>
+        <li>On the <b>Credentials</b> page, copy the <b>Application ID</b> and <b>Access token</b>. Use <b>Sandbox</b> to test with fake cards first, then switch to <b>Production</b>.</li>
+        <li>Open <b>Locations</b> in the left menu and copy your <b>Location ID</b>.</li>
+        <li>Paste them below, click <b>Save</b>, then <b>Test connection</b>.</li>
+      </ol>
+      <div class="grid" style="margin-top:14px">
+        <label class="f"><span>Mode</span><select id="sq-environment"><option value="sandbox">Sandbox (testing — no real charges)</option><option value="production">Production (live — real charges)</option></select></label>
+        <label class="f"><span>When to charge the card</span><select id="sq-captureMode"><option value="capture">Charge immediately at booking</option><option value="authorize">Hold at booking, charge when job is done</option></select><div class="hint">Holds expire after about 6 days.</div></label>
+        <label class="f full"><span>Application ID</span><input type="text" id="sq-applicationId" placeholder="sq0idp-… or sandbox-sq0idb-…" autocomplete="off"></label>
+        <label class="f"><span>Location ID</span><input type="text" id="sq-locationId" placeholder="L…" autocomplete="off"></label>
+        <label class="f"><span>Access token</span><input type="password" id="sq-accessToken" placeholder="EAAA…" autocomplete="off"><div class="hint" id="sq-token-hint">Stored only on your server — never shown to customers.</div></label>
+      </div>
+      <div class="notice warn" style="margin-top:14px">Sandbox test card: <b>4111 1111 1111 1111</b>, any future expiry, CVV <b>111</b>, ZIP <b>12345</b>.</div>
+      <div style="margin-top:14px"><button class="btn btn-ghost" id="test-square">Test connection</button></div>
+    </div>
+  </section>
+
+  <!-- email -->
+  <section class="panel" data-panel="email">
+    <div class="step"><div class="step-head"><h2>Booking email alerts</h2></div>
+      <div class="grid">
+        <label class="f full"><span>Send new bookings to</span><input type="email" id="n-toEmail"></label>
+        <label class="f"><span>Send from (Gmail address)</span><input type="email" id="n-smtpUser" placeholder="you@gmail.com" autocomplete="off"></label>
+        <label class="f"><span>Gmail app password</span><input type="password" id="n-smtpPass" placeholder="16-character app password" autocomplete="off"><div class="hint" id="n-pass-hint"></div></label>
+        <label class="f"><span>Sender name</span><input type="text" id="n-fromName"></label>
+        <label class="f"><span>Email customers a confirmation?</span><label class="switch"><input type="checkbox" id="n-sendCustomerConfirmation"><span></span></label></label>
+        <label class="f"><span>SMTP server</span><input type="text" id="n-smtpHost"></label>
+        <label class="f"><span>SMTP port</span><input type="number" id="n-smtpPort"></label>
+      </div>
+      <details style="margin-top:14px"><summary style="cursor:pointer;font-weight:600">How to get a Gmail app password</summary>
+        <ol class="steps-help" style="margin-top:10px">
+          <li>Turn on 2-Step Verification for your Google account (myaccount.google.com → Security).</li>
+          <li>Go to <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">myaccount.google.com/apppasswords</a>.</li>
+          <li>Name it “Booking website”, click <b>Create</b>, and paste the 16-character password here.</li>
+        </ol></details>
+      <div style="margin-top:14px"><button class="btn btn-ghost" id="test-email">Send test email</button></div>
+    </div>
+  </section>
+
+  <!-- business -->
+  <section class="panel" data-panel="business">
+    <div class="step"><div class="step-head"><h2>Business info</h2></div>
+      <div class="grid">
+        <label class="f"><span>Business name</span><input type="text" id="b-name"></label>
+        <label class="f"><span>Phone number</span><input type="tel" id="b-phone"></label>
+        <label class="f full"><span>Tagline</span><input type="text" id="b-tagline"></label>
+        <label class="f full"><span>Base address (where mileage is measured from)</span><input type="text" id="b-baseAddress" placeholder="Street, City, State ZIP"><div class="hint" id="b-base-hint"></div></label>
+      </div>
+    </div>
+  </section>
+
+  <div class="save-bar hidden" id="save-bar"><button class="btn btn-amber" id="save">Save changes</button><span class="hint" id="save-hint"></span></div>
+</main>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const fmt = (n) => '$' + Number(n || 0).toFixed(2);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let S = null, STATUS = null, BK = [], filter = 'open', tab = 'bookings', dirty = false;
+
+  const api = async (path, opts = {}) => {
+    const r = await fetch(path, { ...opts, headers: { 'Content-Type': 'application/json' }, body: opts.body ? JSON.stringify(opts.body) : undefined });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 401 && path !== '/api/admin/login') { showLogin(); throw new Error('Please log in.'); }
+    if (!r.ok) throw new Error(j.error || 'Request failed');
+    return j;
+  };
+  const toast = (m, ms = 3500) => { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), ms); };
+
+  function showLogin() { $('#login').classList.remove('hidden'); $('#app').classList.add('hidden'); $('#logout').classList.add('hidden'); }
+  $('#login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try { await api('/api/admin/login', { method: 'POST', body: { password: $('#pw').value } }); $('#login').classList.add('hidden'); load(); }
+    catch (err) { $('#login-err').textContent = err.message; $('#login-err').classList.remove('hidden'); }
+  });
+  $('#logout').addEventListener('click', async () => { await api('/api/admin/logout', { method: 'POST' }); showLogin(); });
+
+  async function load() {
+    try {
+      const j = await api('/api/admin/settings'); S = j.settings; STATUS = j.status;
+      $('#app').classList.remove('hidden'); $('#logout').classList.remove('hidden');
+      fill(); renderStatus(); loadBookings();
+    } catch {}
+  }
+
+  function renderStatus() {
+    $('#pw-warn').classList.toggle('hidden', !STATUS.defaultPassword);
+    const items = [
+      [STATUS.square, STATUS.square ? `Square linked (${S.square.environment})` : 'Square not linked — cards not collected', 'square'],
+      [STATUS.email, STATUS.email ? `Emails go to ${S.notifications.toEmail}` : 'Email alerts not set up', 'email'],
+      [STATUS.base, STATUS.base ? 'Mileage from base address' : 'No base address — mileage off', 'business'],
+    ];
+    $('#status').innerHTML = items.map(([ok, label, t]) => `<button class="pill" data-go="${t}"><span class="dot ${ok ? 'ok' : 'no'}"></span>${esc(label)}</button>`).join('');
+    $('#no-base').classList.toggle('hidden', STATUS.base);
+  }
+  $('#status').addEventListener('click', (e) => { const b = e.target.closest('[data-go]'); if (b) goTab(b.dataset.go); });
+
+  // ---------- tabs
+  function goTab(t) {
+    tab = t;
+    document.querySelectorAll('.tabs button').forEach((b) => b.setAttribute('aria-selected', b.dataset.tab === t));
+    document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('on', p.dataset.panel === t));
+    $('#save-bar').classList.toggle('hidden', t === 'bookings');
+  }
+  document.querySelector('.tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) goTab(b.dataset.tab); });
+
+  // ---------- settings form
+  const FIELDS = { business: ['name', 'phone', 'tagline', 'baseAddress'], mileage: ['perMile', 'freeMiles', 'maxMiles', 'roundTrip'], fees: ['asapFee', 'afterHoursFee', 'businessStart', 'businessEnd', 'taxPercent'], notifications: ['toEmail', 'smtpUser', 'smtpPass', 'fromName', 'sendCustomerConfirmation', 'smtpHost', 'smtpPort'], square: ['environment', 'captureMode', 'applicationId', 'locationId', 'accessToken'] };
+  const PREFIX = { business: 'b', mileage: 'm', fees: 'f', notifications: 'n', square: 'sq' };
+  function fill() {
+    for (const [grp, keys] of Object.entries(FIELDS)) for (const k of keys) {
+      const el = $(`#${PREFIX[grp]}-${k}`); if (!el) continue;
+      if (el.type === 'checkbox') el.checked = !!S[grp][k]; else el.value = S[grp][k] ?? '';
+    }
+    $('#sq-accessToken').value = ''; $('#sq-accessToken').placeholder = S.square.accessTokenSet ? `Saved (${S.square.accessToken}) — leave blank to keep` : 'EAAA…';
+    $('#n-smtpPass').value = ''; $('#n-pass-hint').textContent = S.notifications.smtpPassSet ? 'Saved — leave blank to keep it.' : '';
+    $('#b-base-hint').textContent = S.business.baseLat != null ? `📍 Located at ${S.business.baseLat.toFixed(4)}, ${S.business.baseLng.toFixed(4)}` : 'Required for mileage pricing.';
+    $('#svc-list').innerHTML = S.services.map((s, i) => `
+      <div class="svc-row" data-i="${i}">
+        <label class="switch" title="Show on website"><input type="checkbox" data-k="enabled" ${s.enabled ? 'checked' : ''}><span></span></label>
+        <label class="f"><span>Service name</span><input type="text" data-k="name" value="${esc(s.name)}"></label>
+        <label class="f desc"><span>Description</span><input type="text" data-k="description" value="${esc(s.description)}"></label>
+        <label class="f"><span>Price</span><div class="money"><input type="number" step="0.01" min="0" data-k="price" value="${s.price}"></div></label>
+        ${s.id === 'fuel' ? `<div class="fuel-extra"><label class="f"><span>Fuel price / gallon</span><div class="money"><input type="number" step="0.01" min="0" data-k="perGallon" value="${s.perGallon}"></div></label><label class="f"><span>Max gallons</span><input type="number" step="1" min="1" max="20" data-k="maxGallons" value="${s.maxGallons}"></label></div>` : ''}
+      </div>`).join('');
+    example(); dirty = false; $('#save-hint').textContent = '';
+  }
+  function collect() {
+    const out = {};
+    for (const [grp, keys] of Object.entries(FIELDS)) { out[grp] = {}; for (const k of keys) { const el = $(`#${PREFIX[grp]}-${k}`); if (el) out[grp][k] = el.type === 'checkbox' ? el.checked : el.value; } }
+    out.services = [...document.querySelectorAll('.svc-row')].map((row) => {
+      const s = { ...S.services[row.dataset.i] };
+      row.querySelectorAll('[data-k]').forEach((el) => (s[el.dataset.k] = el.type === 'checkbox' ? el.checked : el.value));
+      return s;
+    });
+    return out;
+  }
+  function example() {
+    const per = +$('#m-perMile').value || 0, free = +$('#m-freeMiles').value || 0, rt = $('#m-roundTrip').checked;
+    const miles = 20, billable = Math.max(0, (rt ? 2 : 1) * miles - (rt ? 2 : 1) * free);
+    $('#m-example').textContent = `Example: a customer ${miles} miles away pays ${fmt(billable * per)} in mileage (${billable} billable mi × ${fmt(per)}).`;
+  }
+  document.querySelector('#app').addEventListener('input', (e) => { if (e.target.closest('.panel:not([data-panel=bookings])')) { dirty = true; $('#save-hint').textContent = 'Unsaved changes'; example(); } });
+  document.querySelector('#app').addEventListener('change', (e) => { if (e.target.type === 'checkbox' && e.target.closest('.panel:not([data-panel=bookings])')) { dirty = true; $('#save-hint').textContent = 'Unsaved changes'; example(); } });
+  window.addEventListener('beforeunload', (e) => { if (dirty) e.preventDefault(); });
+
+  $('#save').addEventListener('click', async () => {
+    const btn = $('#save'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Saving…';
+    try { const j = await api('/api/admin/settings', { method: 'PUT', body: collect() }); S = j.settings; STATUS = j.status; fill(); renderStatus(); toast('Saved ✓'); }
+    catch (e) { toast(e.message, 6000); }
+    finally { btn.disabled = false; btn.textContent = 'Save changes'; }
+  });
+  async function testBtn(sel, path) {
+    const b = $(sel); const label = b.textContent;
+    if (dirty) { toast('Save your changes first.'); return; }
+    b.disabled = true; b.innerHTML = '<span class="spin"></span> Testing…';
+    try { const j = await api(path, { method: 'POST' }); toast('✅ ' + j.message, 6000); } catch (e) { toast('❌ ' + e.message, 9000); }
+    finally { b.disabled = false; b.textContent = label; }
+  }
+  $('#test-square').addEventListener('click', () => testBtn('#test-square', '/api/admin/test-square'));
+  $('#test-email').addEventListener('click', () => testBtn('#test-email', '/api/admin/test-email'));
+
+  // ---------- bookings
+  async function loadBookings() { try { BK = (await api('/api/admin/bookings')).bookings; renderBookings(); } catch {} }
+  $('#refresh').addEventListener('click', loadBookings);
+  setInterval(() => { if (tab === 'bookings' && !document.hidden) loadBookings(); }, 30000);
+  $('#filters').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (!b) return; filter = b.dataset.f; $('#filters').querySelectorAll('[data-f]').forEach((x) => x.setAttribute('aria-pressed', x === b)); renderBookings(); });
+
+  function renderBookings() {
+    const list = BK.filter((b) => filter === 'all' || (filter === 'open' ? ['new', 'dispatched'].includes(b.status) : b.status === filter));
+    if (!list.length) { $('#bookings').innerHTML = `<div class="step" style="text-align:center;color:var(--muted)">No ${filter === 'all' ? '' : filter + ' '}bookings yet.</div>`; return; }
+    $('#bookings').innerHTML = list.map((b) => {
+      const when = b.timing === 'asap' ? 'ASAP' : new Date(b.scheduledAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+      const p = b.payment || {};
+      const payBtns = p.status === 'APPROVED' ? `<button class="btn btn-dark" data-act="capture">Charge card ${fmt(b.quote.total)}</button><button class="btn btn-ghost" data-act="void">Release hold</button>`
+        : p.status === 'COMPLETED' ? `<button class="btn btn-ghost" data-act="refund">Refund</button>` : '';
+      return `<article class="bk" data-id="${b.id}">
+        <div class="bk-head"><div><h3>${esc(b.serviceName)} — ${esc(b.customer.name)}</h3>
+          <div class="hint">#${esc(b.ref)} · booked ${new Date(b.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</div></div>
+          <div style="display:flex;gap:6px;align-items:center"><span class="tag ${b.timing === 'asap' ? 'asap' : 'sched'}">${esc(when)}</span><span class="tag ${b.status}">${b.status}</span><b style="font-size:1.15rem">${fmt(b.quote.total)}</b></div></div>
+        <div class="bk-grid">
+          <div><b>Phone</b><a href="tel:${esc(b.customer.phone)}">${esc(b.customer.phone)}</a></div>
+          <div><b>Email</b>${esc(b.customer.email || '—')}</div>
+          <div><b>Vehicle</b>${esc(`${b.vehicle.color} ${b.vehicle.year} ${b.vehicle.make} ${b.vehicle.model}`)}${b.vehicle.plate ? ' · ' + esc(b.vehicle.plate) : ''}</div>
+          <div><b>Location</b><a target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${b.location.lat},${b.location.lng}">${esc(b.location.address)}</a>${b.location.details ? '<br>' + esc(b.location.details) : ''}${b.location.miles != null ? ` (${b.location.miles} mi)` : ''}</div>
+          ${b.details.fuelType ? `<div><b>Fuel</b>${esc(b.details.gallons)} gal ${esc(b.details.fuelType)}</div>` : ''}
+          ${b.details.fluidType ? `<div><b>Fluid</b>${esc(b.details.fluidType)}</div>` : ''}
+          ${b.details.notes ? `<div><b>Notes</b>${esc(b.details.notes)}</div>` : ''}
+          <div><b>Payment</b>${esc(p.statusLabel || '—')}${p.card ? ' · ' + esc(p.card) : ''}</div>
+          <div><b>Email alert</b>${b.emailed?.owner ? 'Sent ✓' : 'Not sent' + (b.emailed?.ownerError ? ' — ' + esc(b.emailed.ownerError) : '')}</div>
+        </div>
+        <div class="bk-actions">
+          <select data-act="status" style="width:auto;min-height:38px">${['new', 'dispatched', 'completed', 'cancelled'].map((s) => `<option ${s === b.status ? 'selected' : ''}>${s}</option>`).join('')}</select>
+          ${payBtns}
+        </div></article>`;
+    }).join('');
+  }
+  $('#bookings').addEventListener('change', async (e) => {
+    if (e.target.dataset.act !== 'status') return;
+    const id = e.target.closest('.bk').dataset.id;
+    try { await api(`/api/admin/bookings/${id}/status`, { method: 'POST', body: { status: e.target.value } }); toast('Status updated'); loadBookings(); } catch (err) { toast(err.message); }
+  });
+  $('#bookings').addEventListener('click', async (e) => {
+    const b = e.target.closest('button[data-act]'); if (!b) return;
+    const id = b.closest('.bk').dataset.id; const act = b.dataset.act;
+    const msg = { capture: 'Charge the customer’s card now?', void: 'Release the hold? The customer won’t be charged.', refund: 'Refund the full amount to the customer?' }[act];
+    if (!confirm(msg)) return;
+    b.disabled = true;
+    try { await api(`/api/admin/bookings/${id}/${act}`, { method: 'POST', body: {} }); toast('Done ✓'); loadBookings(); } catch (err) { toast(err.message, 7000); b.disabled = false; }
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>
