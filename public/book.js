@@ -83,6 +83,7 @@
     $('#book-form').addEventListener('submit', submit);
     $('#mbar-btn').addEventListener('click', () => $('#summary').scrollIntoView({ behavior: 'smooth' }));
     document.querySelectorAll('input,select').forEach((el) => el.addEventListener('input', () => el.classList.remove('invalid')));
+    $('#agree').addEventListener('change', () => $('#policy').classList.remove('invalid'));
     if (cfg.services.length === 1) pickService(cfg.services[0].id);
     renderSummary();
   }
@@ -150,13 +151,14 @@
   }
   function renderSummary() {
     const ul = $('#sum-lines');
-    if (!st.service) { ul.innerHTML = ''; $('#sum-total').textContent = $('#mbar-total').textContent = '$0.00'; $('#sum-meta').textContent = 'Choose a service to see your price.'; return; }
+    if (!st.service) { ul.innerHTML = ''; $('#sum-total').textContent = $('#mbar-total').textContent = '$0.00'; $('#sum-meta').textContent = 'Choose a service to see your price.'; $('#policy-amt').textContent = ''; return; }
     const usingQuote = st.quote && st.located && !st.located.error && !st.located.pending;
     const lines = usingQuote ? st.quote.lines : localPreview();
     ul.innerHTML = lines.map((l) => `<li class="${l.pending ? 'pending' : ''}"><span>${esc(l.label)}</span><span>${l.pending ? l.pending : fmt(l.amount)}</span></li>`).join('')
       + (usingQuote && st.quote.tax ? `<li><span>Tax (${st.quote.taxPercent}%)</span><span>${fmt(st.quote.tax)}</span></li>` : '');
     const total = usingQuote ? st.quote.total : lines.reduce((a, l) => a + (l.amount || 0), 0);
     $('#sum-total').textContent = $('#mbar-total').textContent = fmt(total) + (usingQuote ? '' : '+');
+    $('#policy-amt').textContent = usingQuote ? ` (${fmt(total / 2)} on this booking)` : '';
     const when = st.timing === 'asap' ? 'ASAP' : ($('#scheduledAt').value ? new Date($('#scheduledAt').value).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Scheduled');
     $('#sum-meta').textContent = `${st.service.name} · ${when}` + (usingQuote ? '' : ' · add your location for the final price');
     if (!usingQuote && st.located && st.located.pending) $('#sum-meta').innerHTML = '<span class="spin"></span> Calculating…';
@@ -195,10 +197,11 @@
     need('#vYear', $('#vYear').value); need('#vMake', $('#vMake').value.trim()); need('#vModel', $('#vModel').value.trim());
     const color = st.color === 'Other' ? $('#vColorOther').value.trim() : st.color;
     if (!color) { $('#colors').classList.add('invalid'); bad.push('#colors'); }
+    if (!$('#agree').checked) { $('#policy').classList.add('invalid'); bad.push('#policy'); }
     need('#cName', $('#cName').value.trim()); need('#cPhone', $('#cPhone').value.replace(/\D/g, '').length >= 10);
     if ($('#cEmail').value.trim()) need('#cEmail', /^\S+@\S+\.\S+$/.test($('#cEmail').value.trim()));
     if (bad.length) {
-      const msgs = { '#services': 'choose a service', '#address': 'enter your location', '#colors': 'pick your vehicle color', '#cPhone': 'enter a valid phone number', '#scheduledAt': 'pick a future date and time' };
+      const msgs = { '#policy': 'read and agree to the cancellation & service policy', '#services': 'choose a service', '#address': 'enter your location', '#colors': 'pick your vehicle color', '#cPhone': 'enter a valid phone number', '#scheduledAt': 'pick a future date and time' };
       showErr('Please ' + (bad.map((b) => msgs[b]).filter(Boolean)[0] || 'fill in the highlighted fields') + '.');
       document.querySelector(bad[0]).scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
@@ -221,7 +224,7 @@
         if (t.status !== 'OK') throw new Error((t.errors && t.errors[0] && t.errors[0].message) || 'Please check your card details.');
         sourceId = t.token;
       }
-      const body = { ...payloadBase(), sourceId, expectedTotal: st.quote.total, notes: $('#notes').value,
+      const body = { ...payloadBase(), sourceId, expectedTotal: st.quote.total, notes: $('#notes').value, agreedToPolicy: $('#agree').checked,
         customer: { name: $('#cName').value, phone: $('#cPhone').value, email: $('#cEmail').value },
         vehicle: { year: $('#vYear').value, make: $('#vMake').value, model: $('#vModel').value, color, plate: $('#vPlate').value.toUpperCase() } };
       const r = await fetch('/api/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });

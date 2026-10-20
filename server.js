@@ -199,6 +199,7 @@ async function squareFetch(s, method, p, body) {
 }
 
 // ---------------------------------------------------------------- email
+const POLICY_TEXT = 'If you cancel your service, are not with your vehicle when our driver arrives, or the service is unsuccessful for any reason, a charge of 50% of the total cost of the service still applies. The remaining 50% will be refunded.';
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt$ = (n) => '$' + Number(n).toFixed(2);
 function bookingEmailHtml(b, s, forCustomer) {
@@ -219,6 +220,10 @@ function bookingEmailHtml(b, s, forCustomer) {
   <h3 style="margin:16px 0 4px">Vehicle</h3><table>${row('Vehicle', `${b.vehicle.year} ${b.vehicle.make} ${b.vehicle.model}`)}${row('Color', b.vehicle.color)}${row('License plate', b.vehicle.plate)}</table>
   <h3 style="margin:16px 0 4px">Price</h3><table style="width:100%;max-width:420px">${lines}</table>
   <h3 style="margin:16px 0 4px">Payment</h3><table>${row('Status', b.payment.statusLabel)}${row('Card', b.payment.card)}${forCustomer ? '' : row('Square payment ID', b.payment.id)}</table>
+  <div style="margin-top:16px;padding:12px 14px;background:#fff4d1;border-radius:8px;font-size:13px;color:#4a3a0c">
+    <b>Cancellation &amp; service policy${forCustomer ? '' : ' (customer agreed ' + esc(new Date(b.policyAcceptedAt || b.createdAt).toLocaleString('en-US')) + ')'}:</b>
+    ${esc(POLICY_TEXT)} On this booking that is ${fmt$(b.quote.total / 2)} charged and ${fmt$(b.quote.total - money(b.quote.total / 2))} refunded.
+  </div>
 </div>`;
 }
 async function notify(b, s) {
@@ -312,6 +317,7 @@ const server = http.createServer(async (req, res) => {
       const s = getSettings(); const b = await readBody(req);
       const c = b.customer || {}, v = b.vehicle || {};
       if (!str(c.name) || !str(c.phone)) throw new Error('Please enter your name and phone number.');
+      if (b.agreedToPolicy !== true) throw new Error('Please read and agree to the cancellation & service policy.');
       if (!str(v.year) || !str(v.make) || !str(v.model) || !str(v.color)) throw new Error('Please enter your vehicle’s year, make, model and color.');
       if (b.timing === 'scheduled') {
         const t = new Date(b.scheduledAt);
@@ -331,7 +337,7 @@ const server = http.createServer(async (req, res) => {
         customer: { name: str(c.name, 100), phone: str(c.phone, 40), email: str(c.email, 120) },
         vehicle: { year: str(v.year, 4), make: str(v.make, 40), model: str(v.model, 60), color: str(v.color, 40), plate: str(v.plate, 15) },
         location: { address: loc.address, details: str(b.location?.details, 300), lat: loc.lat, lng: loc.lng, miles: loc.miles },
-        quote, payment: { status: 'none', statusLabel: 'Not collected (Square not connected)' },
+        quote, policyAcceptedAt: new Date().toISOString(), payment: { status: 'none', statusLabel: 'Not collected (Square not connected)' },
       };
       if (squareReady(s)) {
         if (!b.sourceId) throw new Error('Please enter your card details.');
@@ -430,7 +436,7 @@ const server = http.createServer(async (req, res) => {
       }
       if (p === '/api/admin/bookings' && req.method === 'GET') return send(res, 200, { bookings: getBookings() });
 
-      const m = p.match(/^\/api\/admin\/bookings\/([\w-]+)\/(status|capture|void|refund)$/);
+      const m = p.match(/^\/api\/admin\/bookings\/([\w-]+)\/(status|capture|void|refund|half)$/);
       if (m && req.method === 'POST') {
         const s = getSettings(); const all = getBookings(); const bk = all.find((x) => x.id === m[1]);
         if (!bk) return send(res, 404, { error: 'Booking not found' });
@@ -440,6 +446,19 @@ const server = http.createServer(async (req, res) => {
           if (!bk.payment?.id) throw new Error('No Square payment on this booking.');
           if (m[2] === 'capture') { const r = await squareFetch(s, 'POST', `/v2/payments/${bk.payment.id}/complete`, {}); bk.payment.status = r.payment.status; bk.payment.statusLabel = `Paid — ${fmt$(bk.quote.total)}`; }
           if (m[2] === 'void') { const r = await squareFetch(s, 'POST', `/v2/payments/${bk.payment.id}/cancel`, {}); bk.payment.status = r.payment.status; bk.payment.statusLabel = 'Hold released (voided)'; }
+          if (m[2] === 'half') {
+            const keep = Math.round(bk.quote.total * 100 / 2), back = Math.round(bk.quote.total * 100) - keep;
+            if (bk.payment.status === 'APPROVED') {
+              // Card is on hold: lower the hold to 50%, then charge it
+              await squareFetch(s, 'PUT', `/v2/payments/${bk.payment.id}`, { idempotency_key: crypto.randomUUID(), payment: { amount_money: { amount: keep, currency: 'USD' } } });
+              const r = await squareFetch(s, 'POST', `/v2/payments/${bk.payment.id}/complete`, {}); bk.payment.status = r.payment.status;
+            } else if (bk.payment.status === 'COMPLETED') {
+              await squareFetch(s, 'POST', '/v2/refunds', { idempotency_key: crypto.randomUUID(), payment_id: bk.payment.id, amount_money: { amount: back, currency: 'USD' }, reason: '50% refund per cancellation & service policy' });
+              bk.payment.status = 'PARTIALLY_REFUNDED';
+            } else throw new Error('This payment can’t take a cancellation fee in its current state.');
+            bk.payment.statusLabel = `Cancellation fee ${fmt$(keep / 100)} charged · ${fmt$(back / 100)} refunded`;
+            bk.status = 'cancelled';
+          }
           if (m[2] === 'refund') { await squareFetch(s, 'POST', '/v2/refunds', { idempotency_key: crypto.randomUUID(), payment_id: bk.payment.id, amount_money: { amount: Math.round(bk.quote.total * 100), currency: 'USD' }, reason: 'Refund from admin dashboard' }); bk.payment.status = 'REFUNDED'; bk.payment.statusLabel = `Refunded — ${fmt$(bk.quote.total)}`; }
         }
         saveBookings(all); return send(res, 200, { ok: true, booking: bk });

@@ -295,8 +295,9 @@
     $('#bookings').innerHTML = list.map((b) => {
       const when = b.timing === 'asap' ? 'ASAP' : new Date(b.scheduledAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
       const p = b.payment || {};
-      const payBtns = p.status === 'APPROVED' ? `<button class="btn btn-dark" data-act="capture">Charge card ${fmt(b.quote.total)}</button><button class="btn btn-ghost" data-act="void">Release hold</button>`
-        : p.status === 'COMPLETED' ? `<button class="btn btn-ghost" data-act="refund">Refund</button>` : '';
+      const half = `<button class="btn btn-ghost" data-act="half" title="Cancelled, no-show or unsuccessful service">Charge 50% fee · refund ${fmt(b.quote.total - Math.round(b.quote.total * 50) / 100)}</button>`;
+      const payBtns = p.status === 'APPROVED' ? `<button class="btn btn-dark" data-act="capture">Charge card ${fmt(b.quote.total)}</button>${half}<button class="btn btn-ghost" data-act="void">Release hold</button>`
+        : p.status === 'COMPLETED' ? `${half}<button class="btn btn-ghost" data-act="refund">Full refund</button>` : '';
       return `<article class="bk" data-id="${b.id}">
         <div class="bk-head"><div><h3>${esc(b.serviceName)} — ${esc(b.customer.name)}</h3>
           <div class="hint">#${esc(b.ref)} · booked ${new Date(b.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</div></div>
@@ -310,6 +311,7 @@
           ${b.details.fluidType ? `<div><b>Fluid</b>${esc(b.details.fluidType)}</div>` : ''}
           ${b.details.notes ? `<div><b>Notes</b>${esc(b.details.notes)}</div>` : ''}
           <div><b>Payment</b>${esc(p.statusLabel || '—')}${p.card ? ' · ' + esc(p.card) : ''}</div>
+          <div><b>Cancellation policy</b>${b.policyAcceptedAt ? 'Agreed ✓ ' + new Date(b.policyAcceptedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}</div>
           <div><b>Email alert</b>${b.emailed?.owner ? 'Sent ✓' : 'Not sent' + (b.emailed?.ownerError ? ' — ' + esc(b.emailed.ownerError) : '')}</div>
         </div>
         <div class="bk-actions">
@@ -326,7 +328,7 @@
   $('#bookings').addEventListener('click', async (e) => {
     const b = e.target.closest('button[data-act]'); if (!b) return;
     const id = b.closest('.bk').dataset.id; const act = b.dataset.act;
-    const msg = { capture: 'Charge the customer’s card now?', void: 'Release the hold? The customer won’t be charged.', refund: 'Refund the full amount to the customer?' }[act];
+    const msg = { capture: 'Charge the customer’s card now?', void: 'Release the hold? The customer won’t be charged.', refund: 'Refund the full amount to the customer?', half: 'Apply the 50% cancellation / no-show / unsuccessful-service fee? The customer keeps paying 50% and the other 50% goes back to their card. The booking will be marked cancelled.' }[act];
     if (!confirm(msg)) return;
     b.disabled = true;
     try { await api(`/api/admin/bookings/${id}/${act}`, { method: 'POST', body: {} }); toast('Done ✓'); loadBookings(); } catch (err) { toast(err.message, 7000); b.disabled = false; }
